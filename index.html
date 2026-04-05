@@ -29,6 +29,27 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,247,214,.95);backdrop-
   transition:background .2s,transform .15s;text-decoration:none;display:inline-block;}
 .nav-cta:hover{background:#2e200a;transform:translateY(-1px);}
 
+/* slotdada */
+
+let slotData = {};
+
+async function loadSlotData() {
+  try {
+    const res = await fetch(SHEET_URL);
+    slotData = await res.json();
+  } catch (e) {
+    console.error("Failed to load slot data", e);
+  }
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  await loadSlotData();
+  renderDates("pDates", PICKUP_DATES, "p", "pickup");
+  renderSlots("pSlots", "pickup", null);
+  renderDates("dDates", DROPOFF_DATES, "d", "dropoff");
+  renderSlots("dSlots", "dropoff", null);
+});
+
 /* HERO */
 .hero{min-height:90vh;display:flex;align-items:center;justify-content:center;text-align:center;
   padding:90px 5% 70px;background:radial-gradient(ellipse 80% 60% at 50% 0%,#ffe680,#fff7d6 70%);
@@ -754,7 +775,11 @@ function renderSlots(containerId, type, dateLabel) {
   const el = document.getElementById(containerId);
   el.innerHTML = "";
   SLOTS.forEach(s => {
-    const cnt = dateLabel ? getCount(dateLabel, s.id, type) : 0;
+    let cnt = 0;
+
+if (dateLabel && slotData[type] && slotData[type][dateLabel] && slotData[type][dateLabel][s.id]) {
+  cnt = slotData[type][dateLabel][s.id];
+}
     const rem = MAX - cnt;
     const full = rem <= 0;
     const btn = document.createElement("button");
@@ -773,6 +798,10 @@ function renderSlots(containerId, type, dateLabel) {
     el.appendChild(btn);
   });
 }
+
+await loadSlotData();
+renderSlots("pSlots", "pickup", selPDate);
+renderSlots("dSlots", "dropoff", selDDate);
 
 // ─── PRICING TOGGLE ──────────────────────────────────────────────────────────
 function selectPkg(pkg) {
