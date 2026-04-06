@@ -733,10 +733,11 @@ async function fetchLiveCounts() {
   try {
     // Google Apps Script blocks CORS on cross-origin requests.
     // We route the GET through allorigins.win which adds the required header.
-    const proxyUrl = "https://corsproxy.io/?url=" + encodeURIComponent(SHEET_URL + "?action=getCounts");
+    const proxyUrl = SHEET_URL + "?action=getCounts";
     const res  = await fetch(proxyUrl);
-    const wrap = await res.json();
-    const json = JSON.parse(wrap.contents);
+    const wrap = await res.text();
+    const unwrap = JSON.parse(wrap)
+    const json = unwrap.contents;
     if (json.status === "ok") {
       liveCounts = json.counts || {};
       if (json.maxPickup)  MAX_PICKUP  = json.maxPickup;
