@@ -310,15 +310,15 @@ footer .footer-links a:hover{color:var(--y-mid);}
     </div>
     <div class="step-card">
       <div class="step-num">02</div>
-      <div class="tag">Invoice</div>
-      <h3>Invoice Sent to You</h3>
-      <p>After pickup, we'll send an invoice to your email. Payment is due the day before delivery. Paying cash? You can pay on the day of delivery.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-num">03</div>
       <div class="tag">Pickup Day</div>
       <h3>We Pick Everything Up</h3>
       <p>Our team labels every box and piece of furniture and takes clear records of every item..</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">03</div>
+      <div class="tag">Invoice</div>
+      <h3>Invoice Sent to You</h3>
+      <p>After pickup, we'll send an invoice to your email. Payment is due the day before delivery. Paying cash? You can pay on pickup or delivery.</p>
     </div>
     <div class="step-card">
       <div class="step-num">04</div>
@@ -753,13 +753,7 @@ function slotKey(type, date, slot) {
 }
 function getLiveCount(type, date, slot) {
   if (!date || !slot) return 0;
-  const live  = liveCounts[slotKey(type, date, slot)] || 0;
-  const local = parseInt(localStorage.getItem("tm_local_" + slotKey(type, date, slot)) || "0");
-  return Math.max(live, local);
-}
-function bumpLocalCount(type, date, slot) {
-  const k = "tm_local_" + slotKey(type, date, slot);
-  localStorage.setItem(k, (parseInt(localStorage.getItem(k)||"0")+1).toString());
+  return liveCounts[slotKey(type, date, slot)] || 0;
 }
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -768,11 +762,20 @@ let selDDate = null, selDSlot = null;
 let activePkg = "6";
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
+function lockIfSubmitted(type) {
+  if (!localStorage.getItem("tm_submitted_" + type)) return;
+  const flowId = type==="pickup"?"pickupFlow":"dropoffFlow";
+  document.querySelectorAll("#"+flowId+" .fstep").forEach(s=>s.classList.remove("active"));
+  document.getElementById(type+"-ok").classList.add("show");
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   renderDates("pDates", PICKUP_DATES, "p", "pickup");
   renderSlots("pSlots", "pickup", null);
   renderDates("dDates", DROPOFF_DATES, "d", "dropoff");
   renderSlots("dSlots", "dropoff", null);
+  lockIfSubmitted("pickup");
+  lockIfSubmitted("dropoff");
   await fetchLiveCounts();
   if (selPDate) renderSlots("pSlots", "pickup",  selPDate);
   if (selDDate) renderSlots("dSlots", "dropoff", selDDate);
@@ -842,6 +845,7 @@ function switchTab(tab, btn) {
   btn.classList.add("active");
   document.getElementById("pickupFlow").style.display  = tab==="pickup"  ? "block":"none";
   document.getElementById("dropoffFlow").style.display = tab==="dropoff" ? "block":"none";
+  lockIfSubmitted(tab);
 }
 
 // ─── STEP NAVIGATION ─────────────────────────────────────────────────────────
@@ -947,9 +951,6 @@ async function submitForm(type) {
 
   // ── Demo mode (no URL set) ──
   if (!SHEET_URL || SHEET_URL === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
-    const saved = JSON.parse(localStorage.getItem("tm_submissions")||"[]");
-    saved.push(payload);
-    localStorage.setItem("tm_submissions", JSON.stringify(saved));
     finishSubmit(type, payload);
     btnEl.innerHTML = origLabel;
     btnEl.disabled  = false;
@@ -981,8 +982,8 @@ function toggleBoxInfo() {
   // just visual feedback, value captured in payload
 }
 function finishSubmit(type, payload) {
+  localStorage.setItem("tm_submitted_" + type, "1");
   const date = type==="pickup" ? payload.pickupDate : payload.dropoffDate;
-  bumpLocalCount(type, date, payload.timeSlot);
   const flowId = type==="pickup"?"pickupFlow":"dropoffFlow";
   document.querySelectorAll("#"+flowId+" .fstep").forEach(s=>s.classList.remove("active"));
   document.getElementById(type+"-ok").classList.add("show");
